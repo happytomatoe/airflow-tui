@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	generated "github.com/airflow-tui/airflow-tui/airflow/v2/generated"
+	generated "github.com/airflow-tui/airflow-tui/airflow/generated"
 )
 
 type AirflowApiV2Client struct {

@@ -1,6 +1,6 @@
 package airflow
 
-import generated "github.com/airflow-tui/airflow-tui/airflow/v2/generated"
+import generated "github.com/airflow-tui/airflow-tui/airflow/generated"
 
 type DAG = generated.DAG
 type DAGCollection = generated.DAGCollection
