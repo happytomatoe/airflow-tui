@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  postgres-v3:
+    image: postgres:16
+    container_name: airflow-v3-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_db_data_v3:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  airflow-v3:
+    image: apache/airflow:3.0.0
+    container_name: airflow-v3-webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-v3/airflow
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "True"
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      AIRFLOW__CORE__FERNET_KEY: ""
+    user: "${AIRFLOW_UID:-50000}:0"
+    depends_on:
+      postgres-v3:
+        condition: service_healthy
+    ports:
+      - "9090:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+    command: ["bash", "-c", "airflow db migrate && airflow users create --username airflow --firstname Airflow --lastname Admin --email admin@airflow.local --role Admin --password airflow || true && airflow standalone"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  airflow-scheduler-v3:
+    image: apache/airflow:3.0.0
+    container_name: airflow-v3-scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-v3/airflow
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "True"
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      AIRFLOW__CORE__FERNET_KEY: ""
+    user: "${AIRFLOW_UID:-50000}:0"
+    depends_on:
+      postgres-v3:
+        condition: service_healthy
+    volumes:
+      - ./dags:/opt/airflow/dags
+    command: ["bash", "-c", "airflow db migrate && airflow scheduler"]
+    profiles:
+      - scheduler
+
+volumes:
+  postgres_db_data_v3:
