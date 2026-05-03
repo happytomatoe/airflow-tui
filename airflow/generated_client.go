@@ -4,10 +4,59 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	generated "github.com/airflow-tui/airflow-tui/airflow/generated"
+	"github.com/charmbracelet/log"
 )
+
+// V1LogRegex is a compiled regex for parsing V1 log content (Python tuple format)
+// This matches tuples like ('hostname', 'log content') or ('hostname', "log content")
+// where the second element can use either single or double quotes.
+var V1LogRegex = regexp.MustCompile(`\(\s*'((?:\\.|[^'])*)'\s*,\s*(?:"((?:\\.|[^"])*)"|'((?:\\.|[^'])*)')\s*\)`)
+
+// parseV1LogContent parses V1 log content from Python tuple format to plain text.
+// V1 Airflow logs come as serialized Python tuples: [('host', 'log line\nmore')]
+// This extracts the log text, joins multiple tuples, and expands escaped newlines.
+func parseV1LogContent(content string) string {
+	log.Debug("parseV1LogContent input", "content", content)
+	
+	fragments := make([]string, 0)
+	
+	// Find all matches and extract the log content (second element of each tuple)
+	matches := V1LogRegex.FindAllStringSubmatch(content, -1)
+	log.Debug("Found regex matches", "count", len(matches))
+	
+	for i, match := range matches {
+		log.Debug("Match", "index", i, "match", match)
+		// Second element can be in group 2 (double quotes) or group 3 (single quotes)
+		var fragment string
+		if len(match) >= 3 {
+			if match[2] != "" {
+				fragment = match[2] // Double quoted
+			} else if match[3] != "" {
+				fragment = match[3] // Single quoted
+			}
+		}
+		
+		if fragment != "" {
+			// Replace escaped newlines with actual newlines
+			fragment = strings.ReplaceAll(fragment, "\\n", "\n")
+			fragments = append(fragments, fragment)
+		}
+	}
+	
+	if len(fragments) == 0 {
+		log.Debug("No V1 format matches found, returning original content")
+		return content
+	}
+	
+	// Join all fragments with newlines
+	result := strings.Join(fragments, "\n")
+	log.Debug("parseV1LogContent result", "result", result)
+	return result
+}
 
 type AirflowApiClient struct {
 	client  *generated.ClientWithResponses
@@ -107,18 +156,46 @@ func (c *AirflowApiClient) GetTaskInstances(ctx context.Context, dagID, dagRunID
 	return *resp.JSON200.TaskInstances, nil
 }
 
-func (c *AirflowApiClient) GetTaskLog(ctx context.Context, dagID, dagRunID, taskID string, tryNumber int) (string, error) {
-	resp, err := c.client.GetLogWithResponse(ctx, generated.DAGID(dagID), generated.DAGRunID(dagRunID), generated.TaskID(taskID), generated.TaskTryNumber(tryNumber), nil)
+func (c *AirflowApiClient) GetTaskLog(ctx context.Context, dagID, dagRunID, taskID string, tryNumber int, fullContent bool, token *string) (string, *string, error) {
+	params := &generated.GetLogParams{}
+	if fullContent {
+		fc := generated.FullContent(true)
+		params.FullContent = &fc
+	}
+	if token != nil {
+		ct := generated.ContinuationToken(*token)
+		params.Token = &ct
+	}
+	resp, err := c.client.GetLogWithResponse(ctx, generated.DAGID(dagID), generated.DAGRunID(dagRunID), generated.TaskID(taskID), generated.TaskTryNumber(tryNumber), params)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	if resp.JSON200 == nil {
-		return "", fmt.Errorf("unexpected status: %d", resp.StatusCode())
+	if resp.JSON200 != nil && resp.JSON200.Content != nil {
+		content := *resp.JSON200.Content
+		log.Debug("Raw log content from API", "content", content)
+		
+		// Parse V1 log format (Python tuple)
+		content = parseV1LogContent(content)
+		log.Debug("After parseV1LogContent", "content", content)
+		
+		lines := strings.Split(content, "\n")
+		if len(lines) > 1 && !strings.Contains(lines[0], " ") {
+			log.Debug("Skipping hostname line", "hostname", lines[0])
+			content = strings.Join(lines[1:], "\n")
+			log.Debug("After hostname skip", "content", content)
+		}
+		
+		var nextToken *string
+		if resp.JSON200.ContinuationToken != nil {
+			nt := *resp.JSON200.ContinuationToken
+			nextToken = &nt
+		}
+		return content, nextToken, nil
 	}
-	if resp.JSON200.Content == nil {
-		return "", nil
+	if len(resp.Body) > 0 {
+		return string(resp.Body), nil, nil
 	}
-	return *resp.JSON200.Content, nil
+	return "", nil, fmt.Errorf("unexpected status: %d", resp.StatusCode())
 }
 
 func (c *AirflowApiClient) ToggleDag(ctx context.Context, dagID string, paused bool) error {

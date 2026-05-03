@@ -9,7 +9,7 @@ type Client interface {
 	GetDagStats(ctx context.Context, dagID string) ([]DagStatsCollectionItem, error)
 	GetDagRuns(ctx context.Context, dagID string) ([]DAGRun, error)
 	GetTaskInstances(ctx context.Context, dagID, dagRunID string) ([]TaskInstance, error)
-	GetTaskLog(ctx context.Context, dagID, dagRunID, taskID string, tryNumber int) (string, error)
+	GetTaskLog(ctx context.Context, dagID, dagRunID, taskID string, tryNumber int, fullContent bool, token *string) (string, *string, error)
 	ToggleDag(ctx context.Context, dagID string, paused bool) error
 	TriggerDagRun(ctx context.Context, dagID string, conf string) error
 	ClearDagRun(ctx context.Context, dagRunID, dagID string) error

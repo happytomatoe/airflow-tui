@@ -16967,8 +16967,14 @@ func ParseGetLogResponse(rsp *http.Response) (*GetLogResponse, error) {
 		response.JSON404 = &dest
 
 	case rsp.StatusCode == 200:
-		// Content-type (text/plain) unsupported
-
+		// Content-type (text/plain) - use raw body as content
+		content := string(bodyBytes)
+		response.JSON200 = &struct {
+			Content           *string `json:"content,omitempty"`
+			ContinuationToken *string `json:"continuation_token,omitempty"`
+		}{
+			Content: &content,
+		}
 	}
 
 	return response, nil
