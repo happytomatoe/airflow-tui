@@ -1,35 +1,19 @@
 package ui
 
-import (
-	"github.com/charmbracelet/lipgloss"
-)
+import "github.com/charmbracelet/lipgloss"
 
 var (
-	StyleNormal = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("212")).
-			Background(lipgloss.Color("236"))
+	appStyle = lipgloss.NewStyle().
+			Padding(1, 2)
 
-	StyleSelected = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("220")).
-			Background(lipgloss.Color("239"))
-
-	StyleTitle = lipgloss.NewStyle().
+	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("220"))
+			Foreground(lipgloss.Color("212"))
 
-	StyleSubtle = lipgloss.NewStyle().
+	mutedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("245"))
 
-	StyleError = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("red"))
-
-	StyleSuccess = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("green"))
-
-	StyleHeader = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("220"))
-
-	StyleFooter = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("245"))
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196")).
+			Bold(true)
 )
