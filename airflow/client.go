@@ -15,9 +15,8 @@ type Client interface {
 	ClearDagRun(ctx context.Context, dagRunID, dagID string) error
 }
 
-// NewAirflowApiV2Client creates a new v2 API client using the generated OpenAPI client
-func NewAirflowApiV2Client(baseURL string, auth AuthProvider) Client {
-	client, err := newAirflowApiV2Client(baseURL, auth)
+func NewAirflowApiClient(baseURL string, auth AuthProvider) Client {
+	client, err := newAirflowApiV1Client(baseURL, auth)
 	if err != nil {
 		return nil
 	}

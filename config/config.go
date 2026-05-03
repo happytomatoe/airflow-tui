@@ -42,7 +42,7 @@ func ConfigPath() string {
 			xdgConfig = filepath.Join(usr.HomeDir, ".config")
 		}
 	}
-	return filepath.Join(xdgConfig, "flowrs", "config.yaml")
+	return filepath.Join(xdgConfig, "airflow-tui", "config.yaml")
 }
 
 func LoadConfig(path string) *Config {

@@ -10,6 +10,7 @@ import (
 	"github.com/airflow-tui/airflow-tui/config"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -21,8 +22,12 @@ type Model struct {
 	height     int
 	loading    bool
 	err        error
+	dags       []airflow.DAG
+	filter     string
+	searching  bool
 	spinner    spinner.Model
 	table      table.Model
+	input      textinput.Model
 }
 
 type dagsLoadedMsg struct {
@@ -36,9 +41,8 @@ func NewModel(cfg config.Config) *Model {
 
 	t := table.New(
 		table.WithColumns([]table.Column{
-			{Title: "DAG ID", Width: 48},
-			{Title: "Owners", Width: 24},
-			{Title: "Schedule", Width: 28},
+			{Title: "DAG ID", Width: 64},
+			{Title: "Schedule", Width: 32},
 			{Title: "Paused", Width: 8},
 		}),
 		table.WithFocused(true),
@@ -50,10 +54,16 @@ func NewModel(cfg config.Config) *Model {
 	styles.Selected = styles.Selected.Bold(true)
 	t.SetStyles(styles)
 
+	input := textinput.New()
+	input.Prompt = "/ "
+	input.Placeholder = "find DAG by substring"
+	input.CharLimit = 128
+
 	m := &Model{
 		cfg:     cfg,
 		spinner: s,
 		table:   t,
+		input:   input,
 	}
 
 	m.activeName, m.client = activeClient(cfg)
@@ -102,19 +112,46 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.table.SetWidth(max(20, msg.Width-8))
-		m.table.SetHeight(max(5, msg.Height-8))
+		m.table.SetHeight(max(5, msg.Height-10))
 		return m, nil
 
 	case tea.KeyMsg:
+		if m.searching {
+			switch msg.String() {
+			case "esc":
+				m.searching = false
+				m.input.Blur()
+				m.input.SetValue("")
+				return m, nil
+			case "enter":
+				m.filter = strings.TrimSpace(m.input.Value())
+				m.searching = false
+				m.input.Blur()
+				m.applyFilter()
+				return m, nil
+			}
+
+			var cmd tea.Cmd
+			m.input, cmd = m.input.Update(msg)
+			return m, cmd
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "/":
+			m.searching = true
+			m.input.SetValue(m.filter)
+			m.input.CursorEnd()
+			return m, m.input.Focus()
 		case "r":
 			if m.client == nil {
 				return m, nil
 			}
 			m.loading = true
 			m.err = nil
+			m.filter = ""
+			m.input.SetValue("")
 			return m, m.loadDags()
 		}
 
@@ -130,7 +167,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		m.err = msg.err
 		if msg.err == nil {
-			m.table.SetRows(makeRows(msg.dags))
+			m.dags = msg.dags
+			m.applyFilter()
 		}
 		return m, nil
 	}
@@ -155,7 +193,7 @@ func (m *Model) View() string {
 		body = errorStyle.Render(fmt.Sprintf("Failed to load DAGs: %v", m.err)) + "\n" +
 			mutedStyle.Render("Press r to retry.")
 	default:
-		body = m.table.View()
+		body = m.searchView() + m.table.View()
 	}
 
 	header := titleStyle.Render("DAG List")
@@ -163,7 +201,7 @@ func (m *Model) View() string {
 		header += "\n" + mutedStyle.Render("Server: "+m.activeName)
 	}
 
-	footer := mutedStyle.Render("q quit  r refresh")
+	footer := mutedStyle.Render("q quit  r refresh  / search")
 	return appStyle.Render(header + "\n\n" + body + "\n\n" + footer)
 }
 
@@ -186,12 +224,46 @@ func makeRows(dags []airflow.DAG) []table.Row {
 	for _, dag := range dags {
 		rows = append(rows, table.Row{
 			derefString(dag.DagId),
-			strings.Join(derefStrings(dag.Owners), ", "),
 			scheduleText(dag),
 			boolText(dag.IsPaused),
 		})
 	}
 	return rows
+}
+
+func (m *Model) applyFilter() {
+	filtered := filterDags(m.dags, m.filter)
+	m.table.SetRows(makeRows(filtered))
+	if len(filtered) > 0 {
+		m.table.SetCursor(0)
+	}
+}
+
+func (m *Model) searchView() string {
+	if !m.searching && m.filter == "" {
+		return ""
+	}
+
+	if m.searching {
+		return m.input.View() + "\n\n"
+	}
+
+	return mutedStyle.Render("Filter: "+m.filter) + "\n\n"
+}
+
+func filterDags(dags []airflow.DAG, filter string) []airflow.DAG {
+	if filter == "" {
+		return dags
+	}
+
+	filter = strings.ToLower(filter)
+	filtered := make([]airflow.DAG, 0, len(dags))
+	for _, dag := range dags {
+		if strings.Contains(strings.ToLower(derefString(dag.DagId)), filter) {
+			filtered = append(filtered, dag)
+		}
+	}
+	return filtered
 }
 
 func scheduleText(dag airflow.DAG) string {
@@ -214,13 +286,6 @@ func boolText(v *bool) string {
 func derefString(v *string) string {
 	if v == nil || *v == "" {
 		return "-"
-	}
-	return *v
-}
-
-func derefStrings(v *[]string) []string {
-	if v == nil {
-		return nil
 	}
 	return *v
 }

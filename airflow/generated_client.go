@@ -9,15 +9,15 @@ import (
 	generated "github.com/airflow-tui/airflow-tui/airflow/generated"
 )
 
-type AirflowApiV2Client struct {
+type AirflowApiClient struct {
 	client  *generated.ClientWithResponses
 	baseURL string
 	auth    AuthProvider
 }
 
-func newAirflowApiV2Client(baseURL string, auth AuthProvider) (*AirflowApiV2Client, error) {
+func newAirflowApiV1Client(baseURL string, auth AuthProvider) (*AirflowApiClient, error) {
 	baseURL = strings.TrimSuffix(baseURL, "/")
-	serverURL := baseURL + "/api/v2/"
+	serverURL := baseURL + "/api/v1/"
 
 	c, err := generated.NewClientWithResponses(serverURL, generated.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		if auth != nil {
@@ -29,14 +29,14 @@ func newAirflowApiV2Client(baseURL string, auth AuthProvider) (*AirflowApiV2Clie
 		return nil, err
 	}
 
-	return &AirflowApiV2Client{
+	return &AirflowApiClient{
 		client:  c,
 		baseURL: baseURL,
 		auth:    auth,
 	}, nil
 }
 
-func (c *AirflowApiV2Client) GetDags(ctx context.Context) ([]generated.DAG, error) {
+func (c *AirflowApiClient) GetDags(ctx context.Context) ([]generated.DAG, error) {
 	limit := 100
 	params := generated.GetDagsParams{
 		Limit: &limit,
@@ -54,7 +54,7 @@ func (c *AirflowApiV2Client) GetDags(ctx context.Context) ([]generated.DAG, erro
 	return *resp.JSON200.Dags, nil
 }
 
-func (c *AirflowApiV2Client) GetDagStats(ctx context.Context, dagID string) ([]generated.DagStatsCollectionItem, error) {
+func (c *AirflowApiClient) GetDagStats(ctx context.Context, dagID string) ([]generated.DagStatsCollectionItem, error) {
 	params := &generated.GetDagStatsParams{
 		DagIds: dagID,
 	}
@@ -71,7 +71,7 @@ func (c *AirflowApiV2Client) GetDagStats(ctx context.Context, dagID string) ([]g
 	return *resp.JSON200.Dags, nil
 }
 
-func (c *AirflowApiV2Client) GetDagRuns(ctx context.Context, dagID string) ([]generated.DAGRun, error) {
+func (c *AirflowApiClient) GetDagRuns(ctx context.Context, dagID string) ([]generated.DAGRun, error) {
 	limit := 100
 	params := generated.GetDagRunsParams{
 		Limit: &limit,
@@ -89,7 +89,7 @@ func (c *AirflowApiV2Client) GetDagRuns(ctx context.Context, dagID string) ([]ge
 	return *resp.JSON200.DagRuns, nil
 }
 
-func (c *AirflowApiV2Client) GetTaskInstances(ctx context.Context, dagID, dagRunID string) ([]generated.TaskInstance, error) {
+func (c *AirflowApiClient) GetTaskInstances(ctx context.Context, dagID, dagRunID string) ([]generated.TaskInstance, error) {
 	limit := 100
 	params := generated.GetTaskInstancesParams{
 		Limit: &limit,
@@ -107,7 +107,7 @@ func (c *AirflowApiV2Client) GetTaskInstances(ctx context.Context, dagID, dagRun
 	return *resp.JSON200.TaskInstances, nil
 }
 
-func (c *AirflowApiV2Client) GetTaskLog(ctx context.Context, dagID, dagRunID, taskID string, tryNumber int) (string, error) {
+func (c *AirflowApiClient) GetTaskLog(ctx context.Context, dagID, dagRunID, taskID string, tryNumber int) (string, error) {
 	resp, err := c.client.GetLogWithResponse(ctx, generated.DAGID(dagID), generated.DAGRunID(dagRunID), generated.TaskID(taskID), generated.TaskTryNumber(tryNumber), nil)
 	if err != nil {
 		return "", err
@@ -121,7 +121,7 @@ func (c *AirflowApiV2Client) GetTaskLog(ctx context.Context, dagID, dagRunID, ta
 	return *resp.JSON200.Content, nil
 }
 
-func (c *AirflowApiV2Client) ToggleDag(ctx context.Context, dagID string, paused bool) error {
+func (c *AirflowApiClient) ToggleDag(ctx context.Context, dagID string, paused bool) error {
 	params := generated.PatchDagParams{
 		UpdateMask: &[]string{"is_paused"},
 	}
@@ -139,10 +139,10 @@ func (c *AirflowApiV2Client) ToggleDag(ctx context.Context, dagID string, paused
 	return nil
 }
 
-func (c *AirflowApiV2Client) TriggerDagRun(ctx context.Context, dagID string, conf string) error {
+func (c *AirflowApiClient) TriggerDagRun(ctx context.Context, dagID string, conf string) error {
 	dagRunID := "manual__" + dagID
 	body := generated.PostDagRunJSONRequestBody{
-		DagId:   &dagID,
+		DagId:    &dagID,
 		DagRunId: &dagRunID,
 	}
 	resp, err := c.client.PostDagRunWithResponse(ctx, generated.DAGID(dagID), body)
@@ -155,7 +155,7 @@ func (c *AirflowApiV2Client) TriggerDagRun(ctx context.Context, dagID string, co
 	return nil
 }
 
-func (c *AirflowApiV2Client) ClearDagRun(ctx context.Context, dagRunID, dagID string) error {
+func (c *AirflowApiClient) ClearDagRun(ctx context.Context, dagRunID, dagID string) error {
 	resp, err := c.client.DeleteDagRunWithResponse(ctx, generated.DAGID(dagID), generated.DAGRunID(dagRunID))
 	if err != nil {
 		return err

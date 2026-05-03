@@ -101,5 +101,65 @@ def test_get_dags(spawn_tui):
     assert "No DAGs found" not in output, f"TUI couldn't load DAGs. Output: {output}"
     print("PASS: get_dags")
 
+def test_search_dags(spawn_tui):
+    r = requests.get('http://localhost:8080/api/v1/dags', auth=('airflow', 'airflow'))
+    assert r.status_code == 200
+    dag_list = r.json().get('dags', [])
+    assert dag_list, "Expected at least one DAG from Airflow API"
+
+    dag_id = dag_list[0].get('dag_id', '')
+    assert dag_id, "Expected first DAG to have a dag_id"
+
+    search_term = dag_id[:max(1, min(6, len(dag_id)))]
+    p = spawn_tui
+    time.sleep(3)
+
+    p.send('/')
+    time.sleep(0.5)
+    p.send(search_term)
+    time.sleep(0.5)
+    p.send('\r')
+    p.expect_exact(f"Filter: {search_term}", timeout=5)
+    p.logfile.flush()
+
+    log_path = f"{LOG_DIR}/test_search_dags.log"
+    with open(log_path, 'r') as f:
+        output = f.read()
+
+    assert f"Filter: {search_term}" in output, f"Search filter not shown. Output: {output}"
+    assert dag_id in output, f"Filtered DAG '{dag_id}' not found in TUI output"
+    print("PASS: search_dags")
+
+def test_get_dag_runs(spawn_tui):
+    """Test that we can get and display DAG runs for a DAG."""
+    p = spawn_tui
+    time.sleep(3)
+
+    # Press enter to select the first DAG
+    p.send('\r')
+    time.sleep(3)
+
+    # Wait for DAG runs table to appear
+    try:
+        p.expect('Run ID', timeout=5)
+    except pexpect.TIMEOUT:
+        pass
+
+    # Read output from logfile
+    log_path = f"{LOG_DIR}/test_get_dag_runs.log"
+    with open(log_path, 'r') as f:
+        output = f.read()
+
+    # Check that we're in the DAG runs view (should show Run ID, Type, State columns)
+    assert "Run ID" in output, f"DAG runs table not displayed. Output: {output}"
+    assert "Type" in output, f"DAG runs table missing Type column. Output: {output}"
+    assert "State" in output, f"DAG runs table missing State column. Output: {output}"
+
+    # Check that we have actual DAG runs (not just the header)
+    # The output should contain DAG run data, not "No DAG runs found"
+    assert "No DAG runs found" not in output, f"No DAG runs found. Output: {output}"
+
+    print("PASS: get_dag_runs")
+
 if __name__ == '__main__':
     pytest.main([__file__, "-v", "-n", "auto"])

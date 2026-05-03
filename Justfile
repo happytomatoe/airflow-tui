@@ -23,6 +23,10 @@ e2e-test testname="": build
 build:
     go build -o airflow-tui .
 
+# Run Go tests
+test:
+    go test ./...
+
 # Run the TUI
 run:
     ./airflow-tui
