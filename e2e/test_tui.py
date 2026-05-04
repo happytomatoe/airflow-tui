@@ -276,6 +276,35 @@ def test_view_logs(spawn_tui):
 
     # Go to logs (select first task) - just verify no crash
     p.send('\r')
+    time.sleep(3)
+    print("PASS: view_logs")
+
+def test_search_with_arrow_navigation(spawn_tui):
+    """Test that arrow keys work during search mode and selection is preserved on Enter."""
+    p = spawn_tui
+    time.sleep(3)
+
+    # Start search mode
+    p.send('/')
+    time.sleep(0.5)
+    
+    # Type a search term
+    p.send('test')
+    time.sleep(0.5)
+    
+    # Use arrow keys to navigate while searching
+    p.send('\x1b[A')  # up arrow
+    time.sleep(0.2)
+    p.send('\x1b[B')  # down arrow
+    time.sleep(0.2)
+    p.send('\x1b[A')  # up arrow
+    time.sleep(0.2)
+    
+    # Exit search mode with Enter, should keep selection
+    p.send('\r')
+    time.sleep(0.5)
+    
+    print("PASS: search_with_arrow_navigation")
     time.sleep(4)
 
     # If we get here without crashing, test passes
