@@ -257,17 +257,55 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searching = false
 				m.input.Blur()
 				m.input.SetValue("")
-				return m, nil
-			case "enter":
-				m.filter = strings.TrimSpace(m.input.Value())
-				m.searching = false
-				m.input.Blur()
+				m.filter = ""
 				m.applyFilter()
 				return m, nil
+			case "enter":
+				m.searching = false
+				m.input.Blur()
+				// Keep the current selection and filter
+				return m, nil
+			case "up", "down", "pgup", "pgdown", "home", "end":
+				// Allow arrow keys and navigation keys to pass through to table navigation
+				// Handle search input update first
+				var cmd tea.Cmd
+				m.input, cmd = m.input.Update(msg)
+
+				// Apply filter in real-time only if it changed
+				newFilter := strings.TrimSpace(m.input.Value())
+				if newFilter != m.filter {
+					m.filter = newFilter
+					m.applyFilter()
+				}
+
+				// Then handle table navigation
+				var tableCmd tea.Cmd
+				switch m.panel {
+				case dagPanel:
+					m.dagTable, tableCmd = m.dagTable.Update(msg)
+				case dagRunPanel:
+					m.runsTable, tableCmd = m.runsTable.Update(msg)
+				case taskPanel:
+					m.taskTable, tableCmd = m.taskTable.Update(msg)
+				case logPanel:
+					m.logViewport, tableCmd = m.logViewport.Update(msg)
+				}
+
+				if tableCmd != nil {
+					return m, tea.Batch(cmd, tableCmd)
+				}
+				return m, cmd
 			}
 
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
+
+			// Apply filter in real-time only if it changed
+			newFilter := strings.TrimSpace(m.input.Value())
+			if newFilter != m.filter {
+				m.filter = newFilter
+				m.applyFilter()
+			}
 			return m, cmd
 		}
 
@@ -464,14 +502,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case logLoadedMsg:
 		// Always clear loading state, regardless of success or error
 		m.loading = false
-		
+
 		// Handle the error
 		if msg.err != nil {
 			m.err = msg.err
 			log.Debug("Log loading error", "error", msg.err)
 			return m, nil
 		}
-		
+
 		// Handle successful log loading
 		m.err = nil
 		if msg.content != "" {
@@ -479,7 +517,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Debug("Content", "content", msg.content, "length", len(msg.content))
 			log.Debug("Metadata", "dagID", msg.dagID, "dagRunID", msg.dagRunID, "taskID", msg.taskID, "tryNumber", msg.tryNumber, "nextToken", msg.nextToken)
 			log.Debug("=== End debug ===")
-			
+
 			m.logContent += msg.content
 			m.logViewport.SetContent(m.logContent)
 			if m.logFollow {
@@ -488,7 +526,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.logTryNumber = msg.tryNumber
 		m.logToken = msg.nextToken
-		
+
 		// Set up next tick for follow mode
 		var cmd tea.Cmd
 		if m.logFollow && m.tabBar.Active() == TabLogs && m.logToken != nil {
@@ -503,7 +541,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.loadLog(m.nav.dag, m.nav.dagRun, m.nav.task, m.logTryNumber, m.logToken)
 		}
 		return m, nil
-		
+
 	case logTimeoutMsg:
 		m.loading = false
 		m.err = fmt.Errorf("Log loading timed out")
@@ -604,25 +642,31 @@ func (m *Model) headerView(throbber string) string {
 }
 
 func (m *Model) breadcrumbView() string {
+	return m.breadcrumbViewWithSep(" > ")
+}
+
+func (m *Model) breadcrumbViewWithSep(sep string) string {
 	var parts []string
 	if m.activeName != "" {
-		parts = append(parts, m.activeName)
+		parts = append(parts, "config")
 	}
 
 	switch m.tabBar.Active() {
 	case TabConfig:
-		parts = append(parts, "Config")
 	case TabDags:
-		parts = append(parts, "DAGs")
+		if m.nav.dag != "" {
+			parts = append(parts, m.nav.dag)
+		}
 	case TabRuns:
-		parts = append(parts, "DAGs", m.nav.dag, "Runs")
+		parts = append(parts, m.nav.dag)
 	case TabTasks:
-		parts = append(parts, "DAGs", m.nav.dag, "Runs", m.nav.dagRun, "Tasks")
+		parts = append(parts, m.nav.dag, m.nav.dagRun)
 	case TabLogs:
-		parts = append(parts, "DAGs", m.nav.dag, "Runs", m.nav.dagRun, "Tasks", m.nav.task, "Logs")
+		parts = append(parts, m.nav.dag, m.nav.dagRun, m.nav.task)
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Left, parts...)
+	result := strings.Join(parts, sep)
+	return lipgloss.JoinHorizontal(lipgloss.Left, result)
 }
 
 func (m *Model) bodyContent() string {
@@ -906,16 +950,16 @@ func (m *Model) loadLog(dagID, dagRunID, taskID string, tryNumber int, token *st
 		if !m.loading {
 			return nil
 		}
-		
+
 		// Set up a timeout to prevent hanging
 		timeoutChan := make(chan bool, 1)
 		go func() {
 			time.Sleep(8 * time.Second)
 			timeoutChan <- true
 		}()
-		
+
 		resultChan := make(chan logLoadedMsg, 1)
-		
+
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
@@ -923,7 +967,7 @@ func (m *Model) loadLog(dagID, dagRunID, taskID string, tryNumber int, token *st
 			content, nextToken, err := m.client.GetTaskLog(ctx, dagID, dagRunID, taskID, tryNumber, true, token)
 			resultChan <- logLoadedMsg{dagID: dagID, dagRunID: dagRunID, taskID: taskID, tryNumber: tryNumber, content: content, nextToken: nextToken, err: err}
 		}()
-		
+
 		select {
 		case result := <-resultChan:
 			return result
