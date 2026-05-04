@@ -26,25 +26,28 @@ jobs:
       - name: Run Go tests
         run: go test ./...
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start Airflow
+        run: docker compose -f docker-compose.yml up -d
+        timeout-minutes: 5
+
       - name: Setup Python for e2e
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install uv
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install test deps
-        run: uv venv e2e/.venv && uv pip install pytest pytest-xdist -p e2e/.venv
-
-      - name: Start Airflow
-        run: docker-compose -f docker-compose.yml up -d
-        timeout-minutes: 5
+        run: |
+          uv venv e2e/.venv
+          source e2e/.venv/bin/activate
+          uv pip install pytest pytest-xdist pytest-timeout pexpect
 
       - name: Wait for Airflow
         run: |

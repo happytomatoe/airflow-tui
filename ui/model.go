@@ -271,9 +271,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				var cmd tea.Cmd
 				m.input, cmd = m.input.Update(msg)
 
-				// Apply filter in real-time as user types
-				m.filter = strings.TrimSpace(m.input.Value())
-				m.applyFilter()
+				// Apply filter in real-time only if it changed
+				newFilter := strings.TrimSpace(m.input.Value())
+				if newFilter != m.filter {
+					m.filter = newFilter
+					m.applyFilter()
+				}
 
 				// Then handle table navigation
 				var tableCmd tea.Cmd
@@ -297,9 +300,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
 
-			// Apply filter in real-time as user types
-			m.filter = strings.TrimSpace(m.input.Value())
-			m.applyFilter()
+			// Apply filter in real-time only if it changed
+			newFilter := strings.TrimSpace(m.input.Value())
+			if newFilter != m.filter {
+				m.filter = newFilter
+				m.applyFilter()
+			}
 			return m, cmd
 		}
 

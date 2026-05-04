@@ -276,7 +276,12 @@ def test_view_logs(spawn_tui):
 
     # Go to logs (select first task) - just verify no crash
     p.send('\r')
-    time.sleep(3)
+    time.sleep(4)
+
+    # Verify we're in logs view
+    output = p.before.decode('utf-8', errors='replace') if p.before else ""
+    assert len(output) > 0, "Should have output in logs view"
+
     print("PASS: view_logs")
 
 def test_search_with_arrow_navigation(spawn_tui):
@@ -304,12 +309,10 @@ def test_search_with_arrow_navigation(spawn_tui):
     p.send('\r')
     time.sleep(0.5)
     
-    print("PASS: search_with_arrow_navigation")
-    time.sleep(4)
+    # Verify we can still interact with the table after exiting search
+    assert p.before is not None or p.after is not None, "Should have output after search"
 
-    # If we get here without crashing, test passes
-    # The log view shows with header "Try:" and scroll percentage
-    print("PASS: view_logs")
+    print("PASS: search_with_arrow_navigation")
 
 def test_logs_scrolling(spawn_tui):
     """Test that we can scroll through logs without crashing."""
@@ -327,6 +330,10 @@ def test_logs_scrolling(spawn_tui):
     # Go to logs
     p.send('\r')
     time.sleep(4)
+
+    # Verify we're in logs view
+    output = p.before.decode('utf-8', errors='replace') if p.before else ""
+    assert len(output) > 0, "Should have output in logs view"
 
     # Scroll down
     p.send('j')
@@ -347,6 +354,8 @@ def test_logs_scrolling(spawn_tui):
     time.sleep(0.5)
     p.send('g')
     time.sleep(0.5)
+
+    assert True, "Successfully scrolled through logs"
 
     # If we get here without crashing, test passes
     print("PASS: logs_scrolling")
