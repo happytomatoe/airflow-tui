@@ -3,7 +3,7 @@
 ## Build & run
 - `just build` → `go build -o airflow-tui .` (binary output: `./airflow-tui` in repo root)
 - `just run` → runs built binary; no auto-rebuild on code change
-- `go run .` works but config handling differs — TUI creates `~/.config/flowrs/config.yaml` (note: `flowrs/` not `airflow-tui/`) if missing on first run
+- `go run .` works but config handling differs — TUI creates `~/.config/airflow-tui/config.yaml` if missing on first run
 - `just e2e-test` builds first, then runs all Python e2e tests in parallel. Requires Airflow running.
 
 ## Test environment
