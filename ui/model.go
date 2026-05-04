@@ -325,13 +325,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "enter":
-			if m.panel == dagPanel {
+			if m.tabBar.Active() == TabDags {
 				row := m.dagTable.Cursor()
 				if row >= 0 && row < len(m.dags) {
 					dagID := derefString(m.dags[row].DagId)
 					m.navigateToRuns(dagID)
 					return m, m.loadDagRuns(dagID)
 				}
+			} else if m.tabBar.Active() == TabConfig {
+				m.tabBar.SetActive(TabDags)
+				m.updatePanelFromTab()
+				return m, m.loadDags()
 			} else if m.panel == dagRunPanel {
 				row := m.runsTable.Cursor()
 				if row >= 0 && row < len(m.dagRuns) {
@@ -654,7 +658,7 @@ func (m *Model) breadcrumbView() string {
 func (m *Model) breadcrumbViewWithSep(sep string) string {
 	var parts []string
 	if m.activeName != "" {
-		parts = append(parts, "config")
+		parts = append(parts, m.activeName)
 	}
 
 	switch m.tabBar.Active() {
