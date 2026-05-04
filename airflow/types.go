@@ -9,6 +9,9 @@ type DAGRunCollection = generated.DAGRunCollection
 type TaskInstance = generated.TaskInstance
 type TaskInstanceCollection = generated.TaskInstanceCollection
 type DagStatsCollectionItem = generated.DagStatsCollectionItem
+type DagStatsCollection = struct {
+	Dags *[]DagStatsCollectionItem `json:"dags,omitempty"`
+}
 type Connection = generated.Connection
 type ConnectionCollection = generated.ConnectionCollection
 type Pool = generated.Pool

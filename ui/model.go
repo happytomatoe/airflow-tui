@@ -223,7 +223,7 @@ func activeClient(cfg config.Config) (string, airflow.Client) {
 		case "token":
 			auth = &airflow.StaticToken{Token: server.Auth.Token}
 		case "mwaa":
-			client, err := airflow.NewMWAAClient(context.Background(), server.URL, server.Auth.Profile, server.Auth.Region)
+			client, err := airflow.NewMWAASessionClient(context.Background(), server.URL, server.Auth.Profile, server.Auth.Region)
 			if err != nil {
 				return activeName, nil
 			}
