@@ -648,12 +648,11 @@ func (m *Model) breadcrumbView() string {
 func (m *Model) breadcrumbViewWithSep(sep string) string {
 	var parts []string
 	if m.activeName != "" {
-		parts = append(parts, m.activeName)
+		parts = append(parts, "config")
 	}
 
 	switch m.tabBar.Active() {
 	case TabConfig:
-		parts = append(parts, "Config")
 	case TabDags:
 		if m.nav.dag != "" {
 			parts = append(parts, m.nav.dag)

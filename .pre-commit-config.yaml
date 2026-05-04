@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: e2e-tests
+        name: e2e-tests
+        entry: just e2e-test
+        language: system
+        pass_filenames: false
+        always_run: true
