@@ -154,6 +154,6 @@ func init() {
 	configAddCmd.Flags().StringP("pass", "p", "", "Password for basic auth")
 	configAddCmd.Flags().StringP("token", "t", "", "Token for token auth")
 	configAddCmd.Flags().StringP("api", "i", "v1", "API version (v1, v2)")
-	configAddCmd.Flags().String("profile", "", "AWS profile for MWAA auth")
+	configAddCmd.Flags().String("profile", "", "AWS profile for MWAA auth (requires webserver URL)")
 	configAddCmd.Flags().String("region", "", "AWS region for MWAA auth")
 }
