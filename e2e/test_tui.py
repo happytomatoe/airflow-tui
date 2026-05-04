@@ -277,6 +277,7 @@ def test_view_logs(spawn_tui):
     # Go to logs (select first task) - just verify no crash
     p.send('\r')
     time.sleep(4)
+
     print("PASS: view_logs")
 
 def test_search_with_arrow_navigation(spawn_tui):
@@ -322,6 +323,10 @@ def test_logs_scrolling(spawn_tui):
     # Go to logs
     p.send('\r')
     time.sleep(4)
+
+    # Verify we're in logs view
+    output = p.before.decode('utf-8', errors='replace') if p.before else ""
+    assert len(output) > 0, "Should have output in logs view"
 
     # Scroll down
     p.send('j')
