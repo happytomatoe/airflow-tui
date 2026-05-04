@@ -26,6 +26,8 @@ var configAddCmd = &cobra.Command{
 		password, _ := cmd.Flags().GetString("pass")
 		token, _ := cmd.Flags().GetString("token")
 		apiVersion, _ := cmd.Flags().GetString("api")
+		profile, _ := cmd.Flags().GetString("profile")
+		region, _ := cmd.Flags().GetString("region")
 
 		cfgPath := config.ConfigPath()
 		v := config.LoadConfig(cfgPath)
@@ -39,6 +41,8 @@ var configAddCmd = &cobra.Command{
 				Username: username,
 				Password: password,
 				Token:    token,
+				Profile:  profile,
+				Region:   region,
 			},
 		}
 
@@ -145,9 +149,11 @@ func init() {
 	configCmd.AddCommand(configRemoveCmd)
 	configCmd.AddCommand(configSetCmd)
 
-	configAddCmd.Flags().StringP("auth", "a", "basic", "Auth type (basic, token)")
+	configAddCmd.Flags().StringP("auth", "a", "basic", "Auth type (basic, token, mwaa)")
 	configAddCmd.Flags().StringP("user", "u", "", "Username for basic auth")
 	configAddCmd.Flags().StringP("pass", "p", "", "Password for basic auth")
 	configAddCmd.Flags().StringP("token", "t", "", "Token for token auth")
 	configAddCmd.Flags().StringP("api", "i", "v1", "API version (v1, v2)")
+	configAddCmd.Flags().String("profile", "", "AWS profile for MWAA auth")
+	configAddCmd.Flags().String("region", "", "AWS region for MWAA auth")
 }

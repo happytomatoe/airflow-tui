@@ -24,7 +24,7 @@ type TabBar struct {
 
 func NewTabBar() TabBar {
 	return TabBar{
-		active: TabDags,
+		active: TabConfig,
 		width:  0,
 	}
 }
