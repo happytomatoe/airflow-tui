@@ -51,8 +51,8 @@ def test_api_connect():
 
     p = pexpect.spawn('./airflow-tui', dimensions=(24, 150), encoding='utf-8', env={'TERM': 'dumb'})
     time.sleep(3)
-    p.send('c')
-    time.sleep(1)
+    p.send('2')  # Switch to DAGs tab
+    time.sleep(3)
     p.send('q')
     try:
         p.expect(pexpect.EOF, timeout=2)
@@ -114,6 +114,10 @@ def test_search_dags(spawn_tui):
     p = spawn_tui
     time.sleep(3)
 
+    # Switch to DAGs tab first
+    p.send('2')
+    time.sleep(2)
+
     p.send('/')
     time.sleep(0.5)
     p.send(search_term)
@@ -135,7 +139,9 @@ def test_get_dag_runs(spawn_tui):
     p = spawn_tui
     time.sleep(3)
 
-    # Press enter to select the first DAG
+    # Press '2' to go to DAGs tab, then enter to select the first DAG
+    p.send('2')
+    time.sleep(1)
     p.send('\r')
     time.sleep(3)
 
@@ -213,7 +219,9 @@ def test_task_instances(spawn_tui):
     p = spawn_tui
     time.sleep(3)
 
-    # Go to DAG runs
+    # Go to DAGs tab, then DAG runs
+    p.send('2')
+    time.sleep(1)
     p.send('\r')
     time.sleep(3)
 
@@ -228,7 +236,9 @@ def test_gantt_chart(spawn_tui):
     p = spawn_tui
     time.sleep(3)
 
-    # Go to DAG runs
+    # Go to DAGs tab, then DAG runs
+    p.send('2')
+    time.sleep(1)
     p.send('\r')
     time.sleep(3)
 
@@ -266,7 +276,9 @@ def test_view_logs(spawn_tui):
     p = spawn_tui
     time.sleep(3)
 
-    # Go to DAG runs
+    # Go to DAGs tab, then DAG runs
+    p.send('2')
+    time.sleep(1)
     p.send('\r')
     time.sleep(3)
 
@@ -312,7 +324,9 @@ def test_logs_scrolling(spawn_tui):
     p = spawn_tui
     time.sleep(3)
 
-    # Go to DAG runs
+    # Go to DAGs tab, then DAG runs
+    p.send('2')
+    time.sleep(2)
     p.send('\r')
     time.sleep(3)
 
@@ -324,8 +338,10 @@ def test_logs_scrolling(spawn_tui):
     p.send('\r')
     time.sleep(4)
 
-    # Verify we're in logs view
-    output = p.before.decode('utf-8', errors='replace') if p.before else ""
+    # Verify we're in logs view by reading the log file
+    log_path = f"{LOG_DIR}/test_logs_scrolling.log"
+    with open(log_path, 'r') as f:
+        output = f.read()
     assert len(output) > 0, "Should have output in logs view"
 
     # Scroll down
@@ -356,6 +372,8 @@ def test_log_content_correctness(spawn_tui):
     time.sleep(3)
 
     # Navigate to logs view
+    p.send('2')  # Go to DAGs tab
+    time.sleep(1)
     p.send('\r')  # Select first DAG
     time.sleep(3)
     p.send('\r')  # Go to DAG runs
