@@ -599,8 +599,8 @@ func (m *Model) View() string {
 	case m.loading:
 		body = fmt.Sprintf("%s %s", m.spinner.View(), m.loadingMessage())
 	case m.err != nil && !m.connected:
-		// Just show the header with status indicator, no error body
-		body = ""
+		// Show config view with all servers and their status indicators
+		body = m.configView()
 	default:
 		body = m.bodyContent()
 	}
@@ -754,14 +754,24 @@ func (m *Model) configView() string {
 	var rows []table.Row
 	for _, srv := range m.cfg.Servers {
 		activeMark := " "
+		statusIndicator := "  "
 		if srv.Name == m.activeName {
 			activeMark = "*"
+			// Show colored connection status for active server
+			if m.connected {
+				statusIndicator = lipgloss.NewStyle().Foreground(lipgloss.Color("green")).Render("●")
+			} else if m.err != nil {
+				statusIndicator = lipgloss.NewStyle().Foreground(lipgloss.Color("red")).Render("●")
+			} else {
+				statusIndicator = lipgloss.NewStyle().Foreground(lipgloss.Color("yellow")).Render("●")
+			}
 		}
-		rows = append(rows, table.Row{activeMark, srv.Name, srv.URL})
+		rows = append(rows, table.Row{activeMark, statusIndicator, srv.Name, srv.URL})
 	}
 	configTable := table.New(
 		table.WithColumns([]table.Column{
 			{Title: "", Width: 2},
+			{Title: "Status", Width: 6},
 			{Title: "Name", Width: 20},
 			{Title: "URL", Width: 60},
 		}),
