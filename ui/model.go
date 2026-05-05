@@ -754,19 +754,18 @@ func (m *Model) configView() string {
 	var rows []table.Row
 	for _, srv := range m.cfg.Servers {
 		activeMark := " "
-		statusIndicator := "  "
+		status := "   "
 		if srv.Name == m.activeName {
 			activeMark = "*"
-			// Show colored connection status for active server
 			if m.connected {
-				statusIndicator = lipgloss.NewStyle().Foreground(lipgloss.Color("green")).Render("●")
+				status = "up"
 			} else if m.err != nil {
-				statusIndicator = lipgloss.NewStyle().Foreground(lipgloss.Color("red")).Render("●")
+				status = "down"
 			} else {
-				statusIndicator = lipgloss.NewStyle().Foreground(lipgloss.Color("yellow")).Render("●")
+				status = "..."
 			}
 		}
-		rows = append(rows, table.Row{activeMark, statusIndicator, srv.Name, srv.URL})
+		rows = append(rows, table.Row{activeMark, status, srv.Name, srv.URL})
 	}
 	configTable := table.New(
 		table.WithColumns([]table.Column{
