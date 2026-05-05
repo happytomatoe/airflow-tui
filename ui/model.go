@@ -28,6 +28,7 @@ const (
 	dagRunPanel
 	taskPanel
 	logPanel
+	configPanel
 )
 
 type navigation struct {
@@ -55,6 +56,7 @@ type Model struct {
 	spinner       spinner.Model
 	dagTable      table.Model
 	runsTable     table.Model
+	configTable   table.Model
 	input         textinput.Model
 	tabBar        TabBar
 	showHelp      bool
@@ -184,12 +186,29 @@ func NewModel(cfg config.Config) *Model {
 	taskStyles.Selected = taskStyles.Selected.Bold(true)
 	taskTable.SetStyles(taskStyles)
 
+	configTable := table.New(
+		table.WithColumns([]table.Column{
+			{Title: "", Width: 2},
+			{Title: "", Width: 2},
+			{Title: "Status", Width: 6},
+			{Title: "Name", Width: 20},
+			{Title: "URL", Width: 60},
+		}),
+		table.WithFocused(true),
+		table.WithHeight(12),
+	)
+	configStyles := table.DefaultStyles()
+	configStyles.Header = configStyles.Header.Bold(true)
+	configStyles.Selected = configStyles.Selected.Bold(true)
+	configTable.SetStyles(configStyles)
+
 	m := &Model{
 		cfg:          cfg,
 		spinner:      s,
 		panel:        dagPanel,
 		dagTable:     dagTable,
 		runsTable:    runsTable,
+		configTable:  configTable,
 		input:        input,
 		tabBar:       NewTabBar(),
 		taskTable:    taskTable,
@@ -486,6 +505,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err == nil {
 			m.dags = msg.dags
 			m.applyFilter()
+			m.panel = dagPanel
+		} else {
+			m.panel = configPanel
 		}
 		return m, nil
 
@@ -583,6 +605,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.taskTable, cmd = m.taskTable.Update(msg)
 	case logPanel:
 		m.logViewport, cmd = m.logViewport.Update(msg)
+	case configPanel:
+		m.configTable, cmd = m.configTable.Update(msg)
 	}
 	return m, cmd
 }
@@ -752,8 +776,10 @@ func (m *Model) configView() string {
 		return mutedStyle.Render("No servers configured")
 	}
 	var rows []table.Row
-	for _, srv := range m.cfg.Servers {
+	cursorPos := m.configTable.Cursor()
+	for i, srv := range m.cfg.Servers {
 		activeMark := " "
+		cursorMark := " "
 		status := "   "
 		if srv.Name == m.activeName {
 			activeMark = "*"
@@ -765,19 +791,20 @@ func (m *Model) configView() string {
 				status = "..."
 			}
 		}
-		rows = append(rows, table.Row{activeMark, status, srv.Name, srv.URL})
+		if i == cursorPos {
+			cursorMark = ">"
+		}
+		rows = append(rows, table.Row{activeMark, cursorMark, status, srv.Name, srv.URL})
 	}
-	configTable := table.New(
-		table.WithColumns([]table.Column{
-			{Title: "", Width: 2},
-			{Title: "Status", Width: 6},
-			{Title: "Name", Width: 20},
-			{Title: "URL", Width: 60},
-		}),
-		table.WithRows(rows),
-		table.WithFocused(false),
-	)
-	return configTable.View()
+	// Save cursor position before updating rows
+	cursor := m.configTable.Cursor()
+	m.configTable.SetRows(rows)
+	// Restore cursor position (clamp to valid range)
+	if cursor < 0 || cursor >= len(rows) {
+		cursor = 0
+	}
+	m.configTable.SetCursor(cursor)
+	return m.configTable.View()
 }
 
 func (m *Model) footerView() string {
@@ -949,7 +976,7 @@ func max(a, b int) int {
 func (m *Model) updatePanelFromTab() {
 	switch m.tabBar.Active() {
 	case TabConfig:
-		m.panel = dagPanel
+		m.panel = configPanel
 	case TabDags:
 		m.panel = dagPanel
 	case TabRuns:
