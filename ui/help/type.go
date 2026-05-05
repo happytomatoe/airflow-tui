@@ -1,8 +1,10 @@
-package ui
+package help
 
 import (
 	"fmt"
 
+	"github.com/airflow-tui/airflow-tui/ui/tabs"
+	"github.com/airflow-tui/airflow-tui/ui/theme"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -12,50 +14,62 @@ type HelpItem struct {
 	Scope string
 }
 
-var (
-	helpTitleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("212")).
-			Bold(true).
-			Padding(0, 0, 1, 0)
+type HelpDialogModel struct {
+	visible bool
+}
 
-	helpKeyStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("212")).
-			Padding(0, 1, 0, 0)
+func NewHelpDialog() *HelpDialogModel {
+	return &HelpDialogModel{}
+}
 
-	helpDescStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("245"))
+func (m *HelpDialogModel) Show() {
+	m.visible = true
+}
 
-	helpBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("212")).
-			Padding(1, 2)
-)
+func (m *HelpDialogModel) Hide() {
+	m.visible = false
+}
 
-func renderHelp(tab Tab) string {
+func (m *HelpDialogModel) IsVisible() bool {
+	return m.visible
+}
+
+func (m *HelpDialogModel) Render(tab tabs.Tab) string {
+	if !m.visible {
+		return ""
+	}
+
 	items := helpItemsForTab(tab)
 
 	var lines []string
-	lines = append(lines, helpTitleStyle.Render("Help"))
+	lines = append(lines, theme.GetTheme("").TitleStyle.Render("Help"))
+
 	for _, item := range items {
-		key := helpKeyStyle.Render(fmt.Sprintf("%-6s", item.Key))
-		desc := helpDescStyle.Render(item.Desc)
+		key := theme.GetTheme("").TitleStyle.Padding(0, 1, 0, 0).Render(fmt.Sprintf("%-6s", item.Key))
+		desc := theme.GetTheme("").MutedStyle.Render(item.Desc)
 		lines = append(lines, key+desc)
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left, lines...)
-	return helpBoxStyle.Render(content)
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(theme.GetTheme("").BorderColor).
+		Padding(1, 2)
+
+	return boxStyle.Render(content)
 }
 
-func helpItemsForTab(tab Tab) []HelpItem {
+func helpItemsForTab(tab tabs.Tab) []HelpItem {
 	switch tab {
-	case TabConfig:
+	case tabs.TabConfig:
 		return []HelpItem{
 			{"q", "quit", "all"},
 			{"1-5", "switch tab", "all"},
 			{"←/→", "prev/next tab", "all"},
 			{"?", "toggle help", "all"},
 		}
-	case TabDags:
+	case tabs.TabDags:
 		return []HelpItem{
 			{"q", "quit", "all"},
 			{"r", "refresh DAGs", "dags"},
@@ -70,7 +84,7 @@ func helpItemsForTab(tab Tab) []HelpItem {
 			{"←/→", "prev/next tab", "all"},
 			{"?", "toggle help", "all"},
 		}
-	case TabRuns:
+	case tabs.TabRuns:
 		return []HelpItem{
 			{"esc", "back to DAGs", "runs"},
 			{"q", "quit", "all"},
@@ -85,7 +99,7 @@ func helpItemsForTab(tab Tab) []HelpItem {
 			{"←/→", "prev/next tab", "all"},
 			{"?", "toggle help", "all"},
 		}
-	case TabTasks:
+	case tabs.TabTasks:
 		return []HelpItem{
 			{"esc", "back to runs", "tasks"},
 			{"q", "quit", "all"},
@@ -101,7 +115,7 @@ func helpItemsForTab(tab Tab) []HelpItem {
 			{"←/→", "prev/next tab", "all"},
 			{"?", "toggle help", "all"},
 		}
-	case TabLogs:
+	case tabs.TabLogs:
 		return []HelpItem{
 			{"esc", "back to tasks", "logs"},
 			{"q", "quit", "all"},

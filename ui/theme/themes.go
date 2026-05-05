@@ -1,37 +1,6 @@
-package ui
+package theme
 
 import "github.com/charmbracelet/lipgloss"
-
-type Theme struct {
-	AppStyle         lipgloss.Style
-	TitleStyle       lipgloss.Style
-	HeaderStyle      lipgloss.Style
-	MutedStyle       lipgloss.Style
-	ErrorStyle       lipgloss.Style
-	LogViewStyle     lipgloss.Style
-	SelectedStyle    lipgloss.Style
-	TabActiveStyle   lipgloss.Style
-	TabInactiveStyle lipgloss.Style
-	BorderColor      lipgloss.Color
-	AccentColor      lipgloss.Color
-}
-
-func GetTheme(name string) Theme {
-	switch name {
-	case "dracula":
-		return draculaTheme
-	case "gruvbox":
-		return gruvboxTheme
-	case "solarized":
-		return solarizedTheme
-	case "nord":
-		return nordTheme
-	case "onedark":
-		return oneDarkTheme
-	default:
-		return defaultTheme
-	}
-}
 
 var defaultTheme = Theme{
 	AppStyle: lipgloss.NewStyle().

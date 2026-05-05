@@ -1,4 +1,4 @@
-package ui
+package gantt
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/airflow-tui/airflow-tui/airflow"
+	"github.com/airflow-tui/airflow-tui/ui/theme"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -32,7 +33,7 @@ func (g *GanttChart) SetWidth(width int) {
 
 func (g *GanttChart) View() string {
 	if len(g.tasks) == 0 {
-		return mutedStyle.Render("No tasks to display")
+		return theme.GetTheme("").MutedStyle.Render("No tasks to display")
 	}
 
 	minStart, maxEnd := g.findTimeRange()
@@ -146,7 +147,7 @@ func (g *GanttChart) renderBar(start, end, width int, state string) string {
 	}
 	if start < width {
 		for i := start; i < end && i < width; i++ {
-			bar[i] = "▃"
+			bar[i] = "█"
 		}
 	}
 	return strings.Join(bar, "")
@@ -180,7 +181,9 @@ func stateColor(state string) lipgloss.Style {
 	}
 }
 
-var ganttHeaderStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("212")).
-	Bold(true).
-	Padding(0, 0, 1, 0)
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
