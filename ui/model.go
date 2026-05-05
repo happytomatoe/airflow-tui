@@ -599,8 +599,8 @@ func (m *Model) View() string {
 	case m.loading:
 		body = fmt.Sprintf("%s %s", m.spinner.View(), m.loadingMessage())
 	case m.err != nil && !m.connected:
-		// Don't show verbose error, just the status indicator in header
-		body = mutedStyle.Render("Connection failed. Press r to retry.")
+		// Just show the header with status indicator, no error body
+		body = ""
 	default:
 		body = m.bodyContent()
 	}
