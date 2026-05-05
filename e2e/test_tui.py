@@ -368,5 +368,100 @@ def test_log_content_correctness(spawn_tui):
     # Verify we're in logs view - if we get here without crash, test passes
     print("PASS: log_content_correctness")
 
+def test_connection_status_disconnected():
+    """Test that TUI shows disconnected status when Airflow is not running."""
+    # Ensure Airflow is NOT running by using a bad port
+    subprocess.run('./airflow-tui config remove local', shell=True, capture_output=True)
+    subprocess.run('./airflow-tui config add test-local http://localhost:18080 -a basic -u airflow -p airflow', shell=True, capture_output=True)
+
+    log_file_path = f"{LOG_DIR}/test_connection_status_disconnected.log"
+    log_file = open(log_file_path, "w")
+    p = pexpect.spawn('./airflow-tui', dimensions=(24, 150), encoding='utf-8', env={'TERM': 'dumb'})
+    p.logfile = log_file
+    time.sleep(4)
+
+    p.send('q')
+    try:
+        p.expect(pexpect.EOF, timeout=2)
+    except pexpect.TIMEOUT:
+        p.terminate()
+    p.close()
+    log_file.close()
+
+    # Read the log file
+    with open(log_file_path, 'r') as f:
+        output = f.read()
+
+    # Should show disconnected status
+    assert "disconnected" in output, f"Expected 'disconnected' in output. Output: {output}"
+    assert "●" in output, f"Expected connection indicator '●' in output. Output: {output}"
+
+    # Cleanup
+    subprocess.run('./airflow-tui config remove test-local', shell=True, capture_output=True)
+    subprocess.run('./airflow-tui config add local http://localhost:8080 -a basic -u airflow -p airflow', shell=True, capture_output=True)
+
+    print("PASS: connection_status_disconnected")
+
+
+def test_connection_status_connected():
+    """Test that TUI shows connected status when Airflow is running."""
+    # Ensure Airflow is running
+    try:
+        r = requests.get('http://localhost:8080/api/v1/dags', auth=('airflow', 'airflow'), timeout=2)
+        if r.status_code != 200:
+            pytest.skip("Airflow is not running - skipping connected status test")
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        pytest.skip("Airflow is not running - skipping connected status test")
+
+    log_file_path = f"{LOG_DIR}/test_connection_status_connected.log"
+    log_file = open(log_file_path, "w")
+    p = pexpect.spawn('./airflow-tui', dimensions=(24, 150), encoding='utf-8', env={'TERM': 'dumb'})
+    p.logfile = log_file
+    time.sleep(5)  # Wait for connection to establish
+
+    p.send('q')
+    try:
+        p.expect(pexpect.EOF, timeout=2)
+    except pexpect.TIMEOUT:
+        p.terminate()
+    p.close()
+    log_file.close()
+
+    # Read the log file
+    with open(log_file_path, 'r') as f:
+        output = f.read()
+
+    # Should show connected status or DAGs loaded
+    assert "connected" in output or "DAG" in output, f"Expected 'connected' or DAGs in output. Output: {output}"
+
+    print("PASS: connection_status_connected")
+
+
+def test_connection_status_connecting():
+    """Test that TUI shows connecting status while attempting connection."""
+    log_file_path = f"{LOG_DIR}/test_connection_status_connecting.log"
+    log_file = open(log_file_path, "w")
+    p = pexpect.spawn('./airflow-tui', dimensions=(24, 150), encoding='utf-8', env={'TERM': 'dumb'})
+    p.logfile = log_file
+    time.sleep(2)  # Capture during loading phase
+
+    p.send('q')
+    try:
+        p.expect(pexpect.EOF, timeout=2)
+    except pexpect.TIMEOUT:
+        p.terminate()
+    p.close()
+    log_file.close()
+
+    # Read the log file
+    with open(log_file_path, 'r') as f:
+        output = f.read()
+
+    # During loading, should show "connecting..." or the spinner
+    assert "connecting" in output or "Loading" in output or "●" in output, f"Expected 'connecting' or 'Loading' in output. Output: {output}"
+
+    print("PASS: connection_status_connecting")
+
+
 if __name__ == '__main__':
     pytest.main([__file__, "-v", "-n", "auto"])

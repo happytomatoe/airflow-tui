@@ -47,6 +47,7 @@ type Model struct {
 	panel         panel
 	loading       bool
 	err           error
+	connected     bool
 	dags          []airflow.DAG
 	dagRuns       []airflow.DAGRun
 	filter        string
@@ -481,6 +482,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case dagsLoadedMsg:
 		m.loading = false
 		m.err = msg.err
+		m.connected = msg.err == nil
 		if msg.err == nil {
 			m.dags = msg.dags
 			m.applyFilter()
@@ -637,7 +639,21 @@ func (m *Model) loadingMessage() string {
 
 func (m *Model) headerView(throbber string) string {
 	version := mutedStyle.Render("v0.1.0")
-	headerRight := version + throbber
+
+	// Connection status indicator
+	connStatus := "disconnected"
+	connColor := "red"
+	if m.connected {
+		connStatus = "connected"
+		connColor = "green"
+	}
+	if m.loading {
+		connStatus = "connecting..."
+		connColor = "yellow"
+	}
+	connIndicator := lipgloss.NewStyle().Foreground(lipgloss.Color(connColor)).Render(fmt.Sprintf("● %s", connStatus))
+
+	headerRight := lipgloss.JoinHorizontal(lipgloss.Right, connIndicator, " ", version, throbber)
 
 	breadcrumb := m.breadcrumbView()
 
