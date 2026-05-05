@@ -598,9 +598,9 @@ func (m *Model) View() string {
 		body = errorStyle.Render("Active server could not be initialized.")
 	case m.loading:
 		body = fmt.Sprintf("%s %s", m.spinner.View(), m.loadingMessage())
-	case m.err != nil:
-		body = errorStyle.Render(fmt.Sprintf("Error: %v", m.err)) + "\n" +
-			mutedStyle.Render("Press r to retry.")
+	case m.err != nil && !m.connected:
+		// Don't show verbose error, just the status indicator in header
+		body = mutedStyle.Render("Connection failed. Press r to retry.")
 	default:
 		body = m.bodyContent()
 	}
