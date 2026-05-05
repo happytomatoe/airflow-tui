@@ -4,6 +4,8 @@ import subprocess
 import pexpect
 import time
 import os
+import tempfile
+import shutil
 
 LOG_DIR = "e2e/logs"
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -370,13 +372,34 @@ def test_log_content_correctness(spawn_tui):
 
 def test_connection_status_disconnected():
     """Test that TUI shows disconnected status when Airflow is not running."""
-    # Ensure Airflow is NOT running by using a bad port
-    subprocess.run('./airflow-tui config remove local', shell=True, capture_output=True)
-    subprocess.run('./airflow-tui config add test-local http://localhost:18080 -a basic -u airflow -p airflow', shell=True, capture_output=True)
+    # Use a separate config file to avoid interfering with parallel tests
+    # Create a temp config that points to a non-existent Airflow instance
+    temp_config_yaml = """servers:
+  - name: test-disconnected
+    url: http://localhost:18080
+    auth:
+      type: basic
+      username: airflow
+      password: airflow
+    api_version: v1
+active_server: test-disconnected
+poll_interval_ms: 2000
+"""
+
+    temp_dir = tempfile.mkdtemp()
+    temp_config_path = os.path.join(temp_dir, 'airflow-tui', 'config.yaml')
+    os.makedirs(os.path.dirname(temp_config_path), exist_ok=True)
+    with open(temp_config_path, 'w') as f:
+        f.write(temp_config_yaml)
 
     log_file_path = f"{LOG_DIR}/test_connection_status_disconnected.log"
     log_file = open(log_file_path, "w")
-    p = pexpect.spawn('./airflow-tui', dimensions=(24, 150), encoding='utf-8', env={'TERM': 'dumb'})
+
+    # Set XDG_CONFIG_HOME to use our temp config
+    env = os.environ.copy()
+    env['XDG_CONFIG_HOME'] = temp_dir
+
+    p = pexpect.spawn('./airflow-tui', dimensions=(24, 150), encoding='utf-8', env={**env, 'TERM': 'dumb'})
     p.logfile = log_file
     time.sleep(4)
 
@@ -397,8 +420,7 @@ def test_connection_status_disconnected():
     assert "●" in output, f"Expected connection indicator '●' in output. Output: {output}"
 
     # Cleanup
-    subprocess.run('./airflow-tui config remove test-local', shell=True, capture_output=True)
-    subprocess.run('./airflow-tui config add local http://localhost:8080 -a basic -u airflow -p airflow', shell=True, capture_output=True)
+    shutil.rmtree(temp_dir)
 
     print("PASS: connection_status_disconnected")
 
